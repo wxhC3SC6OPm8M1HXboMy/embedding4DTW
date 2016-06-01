@@ -23,14 +23,13 @@ NUM_OUTER_UNIT = 12
 
 # read the data
 data = pickle.load( open(OBSERVATION_FILE,"rb"))
-numberOfObservations = data.shape[0]
 lowLevelEmbeddingDim = data.shape[1]
 lowLevelEmbeddingFeatureDim = data.shape[2]
 
 dataScores = pickle.load( open(SCORE_FILE,"rb"))
 
 # check if the size matches
-if 2 * NUM_INNER_UNIT * NUM_OUTER_UNIT + 2 * (NUM_OUTER_UNIT-1) != lowLevelEmbeddingFeatureDim:
+if 2 * NUM_INNER_UNIT * NUM_OUTER_UNIT != lowLevelEmbeddingFeatureDim:
     print("Error: Dimension mismatch in the number of features in the input data!")
     exit(1)
 
@@ -45,4 +44,4 @@ dataScores = np.array(list(map(float, dataScores)))
 flags = params.setParameters(lowLevelEmbeddingDim)
 
 # train the model
-train.train(flags,lowLevelEmbeddingFeatureDim,data,dataScores)
+train.train(flags,NUM_INNER_UNIT,NUM_OUTER_UNIT,data,dataScores)

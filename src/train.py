@@ -6,10 +6,35 @@ import datetime
 from src.text_cnn_embedding import TextCNNEmbedding
 
 """
+iterate over all batches; generator function
+"""
+
+def batch_iter(data, scores, batch_size, num_epochs):
+    """
+    Generates a batch iterator; this is a generator function
+    """
+
+    data_size = len(data)
+    num_batches_per_epoch = int(len(data)/batch_size) + 1
+    for epoch in range(num_epochs):
+        for batch_num in range(num_batches_per_epoch):
+            start_index = batch_num * batch_size
+            end_index = min((batch_num + 1) * batch_size, data_size)
+            yield (data[start_index:end_index],scores[start_index:end_index])
+
+"""
 training
 """
 
-def train(flags,sequence_length,data,scores):
+def train(flags,cnn_length,no_cnn_batches,data,scores):
+    """
+    :param flags: hyperparameters; loaded from tf
+    :param cnn_length: the length of each input sequence
+    :param no_cnn_batches: the number of sequences, i.e., the number of batches to apply cnn to
+    :param data: input data
+    :param scores: labels or scores
+    :return:
+    """
 
     with tf.Graph().as_default():
         session_conf = tf.ConfigProto(
@@ -17,16 +42,40 @@ def train(flags,sequence_length,data,scores):
           log_device_placement=flags.log_device_placement)
         sess = tf.Session(config=session_conf)
         with sess.as_default():
-            cnn = TextCNNEmbedding(
-                sequence_length=sequence_length,
+            xExpression = tf.placeholder(tf.float32, [None, flags.embedding_dim, 2 * cnn_length * no_cnn_batches], name="input_cnn_x")
+            scoresExpression = tf.placeholder(tf.float32, [None], name="scores")
+
+            filters = list(map(int, flags.filter_sizes.split(",")))
+            # low level cnn
+            cnnLowLevel = TextCNNEmbedding(
+                cnn_length=cnn_length,
+                no_cnn_batches=2 * no_cnn_batches,
                 embedding_size=flags.embedding_dim,
-                filter_sizes=list(map(int, flags.filter_sizes.split(","))),
-                num_filters=flags.num_filters)
-    
+                filter_sizes=filters,
+                num_filters=flags.num_filters,
+                input=xExpression
+            )
+            # high level cnn
+            cnnHighLevel = TextCNNEmbedding(
+                cnn_length=no_cnn_batches,
+                no_cnn_batches=2,
+                embedding_size=flags.num_filters * len(filters),
+                filter_sizes=filters,
+                num_filters=flags.num_filters,
+                input=cnnLowLevel.output
+            )
+
+            # create the loss function
+            # norm of the difference
+            differenceOfEmbeddings = tf.sub(cnnHighLevel.output[:,:,0],cnnHighLevel.output[:,:,1])
+            outputNorm = tf.reduce_sum(tf.pow(differenceOfEmbeddings, 2), 1)
+            # sse loss
+            lossExpression = tf.reduce_sum(tf.pow(outputNorm-scoresExpression, 2))
+
             # define training procedure
             global_step = tf.Variable(0, name="global_step", trainable=False)
             optimizer = tf.train.AdamOptimizer(1e-3)
-            grads_and_vars = optimizer.compute_gradients(cnn.loss)
+            grads_and_vars = optimizer.compute_gradients(lossExpression)
             train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
     
             # keep track of gradient values and sparsity
@@ -45,7 +94,7 @@ def train(flags,sequence_length,data,scores):
             print("Writing to {}\n".format(out_dir))
     
             # Summaries for loss and accuracy
-            loss_summary = tf.scalar_summary("loss", cnn.loss)
+            loss_summary = tf.scalar_summary("loss", lossExpression)
 
             # Train Summaries
             train_summary_op = tf.merge_summary([loss_summary, grad_summaries_merged])
@@ -66,13 +115,17 @@ def train(flags,sequence_length,data,scores):
             # the actual training
             #
 
-            feed_dict = {
-                cnn.input: data,
-                cnn.scores: scores
-            }
-            _, step, summaries, loss = sess.run([train_op, global_step, train_summary_op, cnn.loss],feed_dict)
+            # generate batches
+            batches = batch_iter(data, scores, flags.batch_size, flags.num_epochs)
 
-            time_str = datetime.datetime.now().isoformat()
-            print("{}: step {}, loss {:g}".format(time_str, step, loss))
-            train_summary_writer.add_summary(summaries, step)
+            for batch in batches:
+                feed_dict = {
+                    xExpression: batch[0],
+                    scoresExpression: batch[1]
+                }
+                _, step, summaries, loss = sess.run([train_op, global_step, train_summary_op, lossExpression],feed_dict)
+
+                time_str = datetime.datetime.now().isoformat()
+                print("{}: step {}, loss {:g}".format(time_str, step, loss))
+                train_summary_writer.add_summary(summaries, step)
 
