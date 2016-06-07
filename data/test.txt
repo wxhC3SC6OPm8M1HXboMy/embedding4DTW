@@ -1,10 +1,20 @@
-Mall attackers used 'less is more' strategy.	In Kenya, attackers used 'less is more' strategy.	3
-Opposition leaders emerge to commemorate Cambodian workers' deaths.	Cambodia opposition leaders summoned to court.	0.4
-Weak earnings drag stocks lower.	Weak earnings drag stocks lower on Wall Street.	3.8
-Liquid ammonia leak kills 15 in Shanghai.	Liquid ammonia leak kills at least 15 in Shanghai.	4.6
-Friends of Syria recognizes opposition coalition as legitimate representative of Syrian people.	U.S., Friends of Syria recognise opposition as sole representative.	4
-Weiner stays in NYC mayor's race amid new sexting scandal.	Weiner shrugs off latest online sex scandal.	3
-Death toll rises in Russia plane crash.	Death toll rises to 39 in Italy coach crash.	0
-Suicide bomber hits funeral in Iraq.	Suicide bomber strikes in Syria.	1.8
-Police question man in deadly LA boardwalk crash.	Police arrest suspect in deadly LA driving attack.	2.2
-China yuan strengthens to 6.2689 against USD.	China yuan strengthens to new high against USD.	3
+Mall attackers used 'less is more' strategy.
+In Kenya, attackers used 'less is more' strategy.
+Opposition leaders emerge to commemorate Cambodian workers' deaths.
+Cambodia opposition leaders summoned to court.
+Weak earnings drag stocks lower.
+Weak earnings drag stocks lower on Wall Street.
+Liquid ammonia leak kills 15 in Shanghai.
+Liquid ammonia leak kills at least 15 in Shanghai.
+Friends of Syria recognizes opposition coalition as legitimate representative of Syrian people.
+U.S., Friends of Syria recognise opposition as sole representative.
+Weiner stays in NYC mayor's race amid new sexting scandal.
+Weiner shrugs off latest online sex scandal.
+Death toll rises in Russia plane crash.
+Death toll rises to 39 in Italy coach crash.
+Suicide bomber hits funeral in Iraq.
+Suicide bomber strikes in Syria.
+Police question man in deadly LA boardwalk crash.
+Police arrest suspect in deadly LA driving attack.
+China yuan strengthens to 6.2689 against USD.
+China yuan strengthens to new high against USD.
