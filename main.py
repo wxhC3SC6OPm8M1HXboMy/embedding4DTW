@@ -19,10 +19,11 @@ for paragraph embedding, we have: lowLevel = words; highLevel = sentence
     object = paragraph
 """
 
-CHARACTER_FILE = "../data/chars.pkl"
+CHARACTER_FILE = "data/chars.pkl"
 
 """
 # to compute the basic parameters; this function should not be called
+flags = params.setParameters()
 (chars,max_char_in_word, max_words_in_sentence) = dataprep.computeParameters(flags.text_file)
 print(max_char_in_word)
 print(max_words_in_sentence)
@@ -51,7 +52,7 @@ def main():
 
     # the training object
     training = train.Train(flags.no_inner_unit, flags.no_outer_unit, flags)
-    training.buildMode()
+    training.buildModel()
 
     # one by one load batches of objects to memory and process each one of them
     batch = train.loadInMemoryOneBatch(flags.text_file,flags.batch_size_to_load_to_memory)

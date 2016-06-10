@@ -5,11 +5,11 @@ def setParameters():
     """
     Data parameters
     """
-    tf.flags.DEFINE_string("text_file", "../data/test.txt", "Input file name")
+    tf.flags.DEFINE_string("text_file", "data/data_sentences.txt", "Input file name")
     # the number of objects to load to memory at once
-    tf.flags.DEFINE_integer("batch_size_to_load_to_memory", 9, "Number of text objects to load to memory")
+    tf.flags.DEFINE_integer("batch_size_to_load_to_memory", 10000, "Number of text objects to load to memory")
     # the number of times we load objects to memory
-    tf.flags.DEFINE_integer("no_epochs", 5, "Number of epochs")
+    tf.flags.DEFINE_integer("no_epochs", 12, "Number of epochs")
 
     tf.flags.DEFINE_string("distance_type", "lev", "Distance type") # must be lev or word2vec
     tf.flags.DEFINE_string("word2vec_folder", "../data/word2vec", "Word2vec folder")
@@ -18,11 +18,11 @@ def setParameters():
     Input data embedding
     """
     tf.flags.DEFINE_integer("embedding_dim", 81, "Dimensionality of low level embedding")
-    tf.flags.DEFINE_integer("no_inner_unit", 120, "Max number of inner units")
-    tf.flags.DEFINE_integer("no_outer_unit", 221, "Max number of outer units")
-    tf.flags.DEFINE_integer("batch_size_per_memory_batch", 4, "Batch size per memory batch")
-    tf.flags.DEFINE_integer("no_in_memory_pair_batches_to_process_per_memory_epoch", 20, "Number of in_memory pair batches to process per memory epoch")
-    tf.flags.DEFINE_integer("max_pairs_of_batches_per_memory_epoch", 4, "Maximum number of pairs of in-memory batches per in memory epoch")
+    tf.flags.DEFINE_integer("no_inner_unit", 121, "Max number of inner units")
+    tf.flags.DEFINE_integer("no_outer_unit", 222, "Max number of outer units")
+    tf.flags.DEFINE_integer("batch_size_per_memory_batch", 20, "Batch size per memory batch")
+    tf.flags.DEFINE_integer("no_in_memory_pair_batches_to_process_per_memory_epoch", 10, "Number of in_memory pair batches to process per memory epoch")
+    tf.flags.DEFINE_integer("max_pairs_of_batches_per_memory_epoch", 5, "Maximum number of pairs of in-memory batches per in memory epoch")
 
     """
     Model hyperparameters
@@ -44,6 +44,7 @@ def setParameters():
     tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
     tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
     tf.flags.DEFINE_integer("seed", 38761453, "Seed for random generator")
+    tf.flags.DEFINE_string("gpu", "/gpu:1", "Gpu used")
 
     FLAGS = tf.flags.FLAGS
     FLAGS._parse_flags()

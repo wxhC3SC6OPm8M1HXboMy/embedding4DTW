@@ -126,7 +126,6 @@ class ProcessInMemoryBatch(object):
             t = allPairs[count]
             from1, to1 = (t[0] * batch_size, min((t[0]+1) * batch_size, n))
             from2, to2 = (t[1] * batch_size, min((t[1]+1) * batch_size, n))
-            print("%d %d %d %d" % (from1,to1,from2,to2))
             yield self.__createAllPairs(corpus[from1:to1], corpus[from2:to2])
             count = ((count+1) % max_pairs)
 
@@ -188,7 +187,7 @@ class Train(object):
                 end_index = min((batch_num + 1) * batch_size, data_size)
                 yield (data[start_index:end_index],scores[start_index:end_index])
 
-    def buildMode(self):
+    def buildModel(self):
         """
         The actual training
 
@@ -198,7 +197,7 @@ class Train(object):
         :param scores: labels or scores
         """
 
-        with tf.Graph().as_default():
+        with tf.Graph().as_default(),tf.device('/cpu:0'):
             session_conf = tf.ConfigProto(
               allow_soft_placement=self.__flags.allow_soft_placement,
               log_device_placement=self.__flags.log_device_placement)
@@ -210,6 +209,7 @@ class Train(object):
                 filters = list(map(int, self.__flags.filter_sizes.split(",")))
                 # low level cnn
                 cnnLowLevel = TextCNNEmbedding(
+                    gpu=self.__flags.gpu,
                     cnn_length=self.__cnn_length,
                     no_cnn_batches=2 * self.__no_cnn_batches,
                     embedding_size=self.__flags.embedding_dim,
@@ -219,6 +219,7 @@ class Train(object):
                 )
                 # high level cnn
                 cnnHighLevel = TextCNNEmbedding(
+                    gpu=self.__flags.gpu,
                     cnn_length=self.__no_cnn_batches,
                     no_cnn_batches=2,
                     embedding_size=self.__flags.num_filters * len(filters),

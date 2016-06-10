@@ -10,7 +10,7 @@ Output: self.output
 """
 
 class TextCNNEmbedding(object):
-    def __init__(self, cnn_length, no_cnn_batches, embedding_size, filter_sizes, num_filters, input):
+    def __init__(self, gpu, cnn_length, no_cnn_batches, embedding_size, filter_sizes, num_filters, input):
         """
         :param cnn_length: the length of each input sequence
         :param no_cnn_batches: the number of sequences, i.e., the number of batches to apply cnn to
@@ -24,12 +24,13 @@ class TextCNNEmbedding(object):
 
         # create a convolution plus max pool layer for each filter size
         pooled_outputs = []
-        for filter_size in filter_sizes:
-            with tf.name_scope("conv-maxpool-%s" % filter_size):
-                # convolution layer
-                filter_shape = [embedding_size, filter_size, 1, num_filters]
-                W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1), name="W")
-                b = tf.Variable(tf.constant(0.1, shape=[num_filters]), name="b")
+        with tf.device(gpu):
+            for filter_size in filter_sizes:
+                with tf.name_scope("conv-maxpool-%s" % filter_size):
+                    # convolution layer
+                    filter_shape = [embedding_size, filter_size, 1, num_filters]
+                    W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1), name="W")
+                    b = tf.Variable(tf.constant(0.1, shape=[num_filters]), name="b")
 
                 # for each cnn input batch
                 temp_output = []
