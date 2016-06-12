@@ -147,6 +147,14 @@ class Train(object):
 
         self.__flags = flags
 
+    def __enter__(self):
+        tf.Graph().as_default().__enter__()
+        tf.device('/cpu:0').__enter__()
+
+    def __exit__(self,*args):
+        tf.Graph().as_default().__exit__(*args)
+        tf.device('/cpu:0').__exit__(*args)
+
     def train(self, data, scores):
         """
         The actual training
@@ -197,78 +205,81 @@ class Train(object):
         :param scores: labels or scores
         """
 
-        with tf.Graph().as_default(),tf.device('/cpu:0'):
-            session_conf = tf.ConfigProto(
-              allow_soft_placement=self.__flags.allow_soft_placement,
-              log_device_placement=self.__flags.log_device_placement)
-            self.__sess = tf.Session(config=session_conf)
-            with self.__sess.as_default():
-                self.__xExpression = tf.placeholder(tf.float32, [None, self.__flags.embedding_dim, 2 * self.__cnn_length * self.__no_cnn_batches], name="input_cnn_x")
-                self.__scoresExpression = tf.placeholder(tf.float32, [None], name="scores")
+        tf.Graph().as_default()
+        tf.device('/cpu:0')
 
-                filters = list(map(int, self.__flags.filter_sizes.split(",")))
-                # low level cnn
-                cnnLowLevel = TextCNNEmbedding(
-                    gpu=self.__flags.gpu,
-                    cnn_length=self.__cnn_length,
-                    no_cnn_batches=2 * self.__no_cnn_batches,
-                    embedding_size=self.__flags.embedding_dim,
-                    filter_sizes=filters,
-                    num_filters=self.__flags.num_filters,
-                    input=self.__xExpression
-                )
-                # high level cnn
-                cnnHighLevel = TextCNNEmbedding(
-                    gpu=self.__flags.gpu,
-                    cnn_length=self.__no_cnn_batches,
-                    no_cnn_batches=2,
-                    embedding_size=self.__flags.num_filters * len(filters),
-                    filter_sizes=filters,
-                    num_filters=self.__flags.num_filters,
-                    input=cnnLowLevel.output
-                )
+        # with tf.Graph().as_default(),tf.device('/cpu:0'):
+        session_conf = tf.ConfigProto(
+          allow_soft_placement=self.__flags.allow_soft_placement,
+          log_device_placement=self.__flags.log_device_placement)
+        self.__sess = tf.Session(config=session_conf)
+        with self.__sess.as_default():
+            self.__xExpression = tf.placeholder(tf.float32, [None, self.__flags.embedding_dim, 2 * self.__cnn_length * self.__no_cnn_batches], name="input_cnn_x")
+            self.__scoresExpression = tf.placeholder(tf.float32, [None], name="scores")
 
-                # create the loss function
-                # norm of the difference
-                differenceOfEmbeddings = tf.sub(cnnHighLevel.output[:,:,0],cnnHighLevel.output[:,:,1])
-                outputNorm = tf.reduce_sum(tf.pow(differenceOfEmbeddings, 2), 1)
-                # sse loss
-                self.__lossExpression = tf.reduce_sum(tf.pow(outputNorm-self.__scoresExpression, 2))
+            filters = list(map(int, self.__flags.filter_sizes.split(",")))
+            # low level cnn
+            cnnLowLevel = TextCNNEmbedding(
+                gpu=self.__flags.gpu,
+                cnn_length=self.__cnn_length,
+                no_cnn_batches=2 * self.__no_cnn_batches,
+                embedding_size=self.__flags.embedding_dim,
+                filter_sizes=filters,
+                num_filters=self.__flags.num_filters,
+                input=self.__xExpression
+            )
+            # high level cnn
+            cnnHighLevel = TextCNNEmbedding(
+                gpu=self.__flags.gpu,
+                cnn_length=self.__no_cnn_batches,
+                no_cnn_batches=2,
+                embedding_size=self.__flags.num_filters * len(filters),
+                filter_sizes=filters,
+                num_filters=self.__flags.num_filters,
+                input=cnnLowLevel.output
+            )
 
-                # define training procedure
-                self.__global_step = tf.Variable(0, name="global_step", trainable=False)
-                optimizer = tf.train.AdamOptimizer(1e-3)
-                grads_and_vars = optimizer.compute_gradients(self.__lossExpression)
-                self.__train_op = optimizer.apply_gradients(grads_and_vars, global_step=self.__global_step)
+            # create the loss function
+            # norm of the difference
+            differenceOfEmbeddings = tf.sub(cnnHighLevel.output[:,:,0],cnnHighLevel.output[:,:,1])
+            outputNorm = tf.reduce_sum(tf.pow(differenceOfEmbeddings, 2), 1)
+            # sse loss
+            self.__lossExpression = tf.reduce_sum(tf.pow(outputNorm-self.__scoresExpression, 2))
 
-                # keep track of gradient values and sparsity
-                grad_summaries = []
-                for g, v in grads_and_vars:
-                    if g is not None:
-                        grad_hist_summary = tf.histogram_summary("{}/grad/hist".format(v.name), g)
-                        sparsity_summary = tf.scalar_summary("{}/grad/sparsity".format(v.name), tf.nn.zero_fraction(g))
-                        grad_summaries.append(grad_hist_summary)
-                        grad_summaries.append(sparsity_summary)
-                grad_summaries_merged = tf.merge_summary(grad_summaries)
+            # define training procedure
+            self.__global_step = tf.Variable(0, name="global_step", trainable=False)
+            optimizer = tf.train.AdamOptimizer(1e-3)
+            grads_and_vars = optimizer.compute_gradients(self.__lossExpression)
+            self.__train_op = optimizer.apply_gradients(grads_and_vars, global_step=self.__global_step)
 
-                # output directory for models and summaries
-                timestamp = str(int(time.time()))
-                out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp))
-                print("Writing to {}\n".format(out_dir))
+            # keep track of gradient values and sparsity
+            grad_summaries = []
+            for g, v in grads_and_vars:
+                if g is not None:
+                    grad_hist_summary = tf.histogram_summary("{}/grad/hist".format(v.name), g)
+                    sparsity_summary = tf.scalar_summary("{}/grad/sparsity".format(v.name), tf.nn.zero_fraction(g))
+                    grad_summaries.append(grad_hist_summary)
+                    grad_summaries.append(sparsity_summary)
+            grad_summaries_merged = tf.merge_summary(grad_summaries)
 
-                # Summaries for loss and accuracy
-                loss_summary = tf.scalar_summary("loss",self.__lossExpression)
+            # output directory for models and summaries
+            timestamp = str(int(time.time()))
+            out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp))
+            print("Writing to {}\n".format(out_dir))
 
-                # Train Summaries
-                self.__train_summary_op = tf.merge_summary([loss_summary, grad_summaries_merged])
-                train_summary_dir = os.path.join(out_dir, "summaries", "train")
-                self.__train_summary_writer = tf.train.SummaryWriter(train_summary_dir, self.__sess.graph)
+            # Summaries for loss and accuracy
+            loss_summary = tf.scalar_summary("loss",self.__lossExpression)
 
-                # checkpoint directory. Tensorflow assumes this directory already exists so we need to create it
-                checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
-                if not os.path.exists(checkpoint_dir):
-                    os.makedirs(checkpoint_dir)
-                tf.train.Saver(tf.all_variables())
+            # Train Summaries
+            self.__train_summary_op = tf.merge_summary([loss_summary, grad_summaries_merged])
+            train_summary_dir = os.path.join(out_dir, "summaries", "train")
+            self.__train_summary_writer = tf.train.SummaryWriter(train_summary_dir, self.__sess.graph)
 
-                # initialize all variables
-                self.__sess.run(tf.initialize_all_variables())
+            # checkpoint directory. Tensorflow assumes this directory already exists so we need to create it
+            checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
+            if not os.path.exists(checkpoint_dir):
+                os.makedirs(checkpoint_dir)
+            tf.train.Saver(tf.all_variables())
+
+            # initialize all variables
+            self.__sess.run(tf.initialize_all_variables())

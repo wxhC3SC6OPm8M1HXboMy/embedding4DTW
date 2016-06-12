@@ -1,5 +1,4 @@
 import pickle
-import numpy as np
 import random
 
 import src.parameters as params
@@ -52,21 +51,22 @@ def main():
 
     # the training object
     training = train.Train(flags.no_inner_unit, flags.no_outer_unit, flags)
-    training.buildModel()
+    with training:
+        training.buildModel()
 
-    # one by one load batches of objects to memory and process each one of them
-    batch = train.loadInMemoryOneBatch(flags.text_file,flags.batch_size_to_load_to_memory)
-    for i in range(flags.no_epochs):
-        print("Loading batch %d of objects to memory!" % (i+1))
-        # for each in memory batch, slice into smaller batches and then create pairs of objects for training
-        processOneBatch = train.ProcessInMemoryBatch(sentence2Matrix.createMatrix,distanceObj.computeDistance,
-                                                     flags.embedding_dim,flags.no_inner_unit * flags.no_outer_unit)
-        pairBatch = processOneBatch.process(next(batch),flags.batch_size_per_memory_batch,flags.max_pairs_of_batches_per_memory_epoch)
-        # execute epochs
-        for j in range(flags.no_in_memory_pair_batches_to_process_per_memory_epoch):
-            # execute a single pair of batches
-            print("Processing pair batch number %d" % (j+1))
-            (data,scores) = next(pairBatch)
-            training.train(data, scores)
+        # one by one load batches of objects to memory and process each one of them
+        batch = train.loadInMemoryOneBatch(flags.text_file,flags.batch_size_to_load_to_memory)
+        for i in range(flags.no_epochs):
+            print("Loading batch %d of objects to memory!" % (i+1))
+            # for each in memory batch, slice into smaller batches and then create pairs of objects for training
+            processOneBatch = train.ProcessInMemoryBatch(sentence2Matrix.createMatrix,distanceObj.computeDistance,
+                                                         flags.embedding_dim,flags.no_inner_unit * flags.no_outer_unit)
+            pairBatch = processOneBatch.process(next(batch),flags.batch_size_per_memory_batch,flags.max_pairs_of_batches_per_memory_epoch)
+            # execute epochs
+            for j in range(flags.no_in_memory_pair_batches_to_process_per_memory_epoch):
+                # execute a single pair of batches
+                print("Processing pair batch number %d" % (j+1))
+                (data,scores) = next(pairBatch)
+                training.train(data, scores)
 
 main()
