@@ -30,7 +30,7 @@ chars.append('\t')
 x = dict()
 for idx,v in enumerate(character_list):
     x[v] = idx
-pickle.dump(chars, open(CHARACTER_FILE, "wb" ))
+pickle.dump(x, open(CHARACTER_FILE, "wb" ))
 exit(1)
 """
 

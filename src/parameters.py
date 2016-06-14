@@ -7,7 +7,7 @@ def setParameters():
     """
     tf.flags.DEFINE_string("text_file", "data/data_sentences.txt", "Input file name")
     # the number of objects to load to memory at once
-    tf.flags.DEFINE_integer("batch_size_to_load_to_memory", 10000, "Number of text objects to load to memory")
+    tf.flags.DEFINE_integer("batch_size_to_load_to_memory", 50000, "Number of text objects to load to memory")
     # the number of times we load objects to memory
     tf.flags.DEFINE_integer("no_epochs", 12, "Number of epochs")
 
@@ -18,10 +18,10 @@ def setParameters():
     Input data embedding
     """
     tf.flags.DEFINE_integer("embedding_dim", 81, "Dimensionality of low level embedding")
-    tf.flags.DEFINE_integer("no_inner_unit", 121, "Max number of inner units")
-    tf.flags.DEFINE_integer("no_outer_unit", 222, "Max number of outer units")
-    tf.flags.DEFINE_integer("batch_size_per_memory_batch", 20, "Batch size per memory batch")
-    tf.flags.DEFINE_integer("no_in_memory_pair_batches_to_process_per_memory_epoch", 10, "Number of in_memory pair batches to process per memory epoch")
+    tf.flags.DEFINE_integer("no_inner_unit", 26, "Max number of inner units")
+    tf.flags.DEFINE_integer("no_outer_unit", 51, "Max number of outer units")
+    tf.flags.DEFINE_integer("batch_size_per_memory_batch", 500, "Batch size per memory batch")
+    tf.flags.DEFINE_integer("no_in_memory_pair_batches_to_process_per_memory_epoch", 50, "Number of in_memory pair batches to process per memory epoch")
     tf.flags.DEFINE_integer("max_pairs_of_batches_per_memory_epoch", 5, "Maximum number of pairs of in-memory batches per in memory epoch")
 
     """
