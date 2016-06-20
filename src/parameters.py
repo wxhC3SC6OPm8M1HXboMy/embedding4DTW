@@ -3,16 +3,22 @@ import tensorflow as tf
 def setParameters():
 
     """
+    Application specific (should probably not be here)
+    """
+    # applicable for sentence to embedding
+    tf.flags.DEFINE_string("distance_type", "lev", "Distance type") # must be lev or word2vec
+    tf.flags.DEFINE_string("word2vec_folder", "../data/word2vec", "Word2vec folder")
+
+    """
     Data parameters
     """
-    tf.flags.DEFINE_string("text_file", "data/train_set_data_sentences.txt", "Input file name")
+    tf.flags.DEFINE_string("train_text_file", "data/train_set_data_sentences.txt", "Train input file name")
+    tf.flags.DEFINE_string("validate_text_file", "data/validate_set_data_sentences.txt", "Validate input file name")
+    tf.flags.DEFINE_string("test_text_file", "data/test_set_data_sentences.txt", "Test input file name")
     # the number of objects to load to memory at once
     tf.flags.DEFINE_integer("batch_size_to_load_to_memory", 50000, "Number of text objects to load to memory")
     # the number of times we load objects to memory
     tf.flags.DEFINE_integer("no_epochs", 12, "Number of epochs")
-
-    tf.flags.DEFINE_string("distance_type", "lev", "Distance type") # must be lev or word2vec
-    tf.flags.DEFINE_string("word2vec_folder", "../data/word2vec", "Word2vec folder")
 
     """
     Input data embedding
@@ -35,8 +41,14 @@ def setParameters():
     """
     tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
     tf.flags.DEFINE_integer("num_epochs", 200, "Number of training epochs (default: 200)")
-    tf.flags.DEFINE_integer("evaluate_every", 100, "Evaluate model on dev set after this many steps (default: 100)")
-    tf.flags.DEFINE_integer("checkpoint_every", 100, "Save model after this many steps (default: 100)")
+
+    """
+    Validation and test parameters
+    """
+    tf.flags.DEFINE_string("checkpoint_dir", "checkpoints", "Checkpoint directory")
+    tf.flags.DEFINE_integer("evaluate_every", 1000, "Evaluate model on dev set after this many steps (default: 100)")
+    tf.flags.DEFINE_integer("validation_batch_size", 500, "Batch size for creating pairs of objects for validation")
+    tf.flags.DEFINE_integer("test_batch_size", 500, "Batch size for creating pairs of objects for evaluation")
 
     """
     Misc parameters
@@ -45,6 +57,7 @@ def setParameters():
     tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
     tf.flags.DEFINE_integer("seed", 38761453, "Seed for random generator")
     tf.flags.DEFINE_string("gpu", "/gpu:1", "Gpu used")
+    tf.flags.DEFINE_float("tolerance", 0.0000001, "Floating point tolerance")
 
     FLAGS = tf.flags.FLAGS
     FLAGS._parse_flags()
