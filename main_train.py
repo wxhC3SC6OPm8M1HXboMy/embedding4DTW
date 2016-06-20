@@ -6,6 +6,9 @@ import src.train as train
 
 import tools.prep_data as dataprep
 
+MODE = "train"
+MODE = "evaluate"
+
 """
 lowLevel
 highLevel
@@ -16,6 +19,9 @@ for sentence embedding, we have: lowLevel = characters; highLevel = words
 for paragraph embedding, we have: lowLevel = words; highLevel = sentence
     NO_INNER_UNIT = number of words per sentence; NO_OUTER_UNIT = number of sentences per paragraph (these values must be set in parameters)
     object = paragraph
+
+train data is loaded and prepared in batches (everything is batch by batch with nesting)
+validation data is loaded at once (as one batch) and prepared in batches (due to potentially big size of all pairs of objects)
 """
 
 CHARACTER_FILE = "data/chars.pkl"
@@ -34,16 +40,24 @@ pickle.dump(x, open(CHARACTER_FILE, "wb" ))
 exit(1)
 """
 
-def main():
+"""
+TRAIN
+"""
+
+def main_train():
 
     # set all hyper parameters
     flags = params.setParameters()
 
     random.seed(flags.seed)
 
-    # class that converts a sentence into an embedding matrix
+    # read the mapping of characters to array indices
     character_dict = pickle.load( open( CHARACTER_FILE, "rb" ) )
 
+    # read validation data
+    validationData = train.loadValidationData(flags.validate_text_file)
+
+    # class for creating the matrix from sentences
     sentence2Matrix = dataprep.CreateMatrixFromSentence(character_dict,flags.no_inner_unit,flags.no_outer_unit)
 
     # class for computing the distance between two sentences
@@ -55,7 +69,7 @@ def main():
         training.buildModel()
 
         # one by one load batches of objects to memory and process each one of them
-        batch = train.loadInMemoryOneBatch(flags.text_file,flags.batch_size_to_load_to_memory)
+        batch = train.loadInMemoryOneBatch(flags.train_text_file,flags.batch_size_to_load_to_memory)
         for i in range(flags.no_epochs):
             print("Loading batch %d of objects to memory!" % (i+1))
             # for each in memory batch, slice into smaller batches and then create pairs of objects for training
@@ -67,6 +81,18 @@ def main():
                 # execute a single pair of batches
                 print("Processing pair batch number %d" % (j+1))
                 (data,scores) = next(pairBatch)
-                training.train(data, scores)
+                # validation generator
+                validationDataGenerator = train.process(validationData,flags.validation_batch_size)
+                # actual training
+                training.train(data, scores, validationDataGenerator)
 
-main()
+"""
+EVALUATE (TEST)
+"""
+
+def main_evaluate()
+
+if MODE == "train":
+    main_train()
+else:
+    main_evaluate()
