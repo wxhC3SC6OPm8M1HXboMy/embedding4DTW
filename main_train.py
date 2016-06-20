@@ -6,9 +6,6 @@ import src.train as train
 
 import tools.prep_data as dataprep
 
-MODE = "train"
-MODE = "evaluate"
-
 """
 lowLevel
 highLevel
@@ -55,7 +52,7 @@ def main_train():
     character_dict = pickle.load( open( CHARACTER_FILE, "rb" ) )
 
     # read validation data
-    validationData = train.loadValidationData(flags.validate_text_file)
+    validationData = train.loadAllData(flags.validate_text_file)
 
     # class for creating the matrix from sentences
     sentence2Matrix = dataprep.CreateMatrixFromSentence(character_dict,flags.no_inner_unit,flags.no_outer_unit)
@@ -86,13 +83,5 @@ def main_train():
                 # actual training
                 training.train(data, scores, validationDataGenerator)
 
-"""
-EVALUATE (TEST)
-"""
+main_train()
 
-def main_evaluate()
-
-if MODE == "train":
-    main_train()
-else:
-    main_evaluate()
