@@ -8,6 +8,16 @@ import numpy as np
 from src.text_cnn_embedding import TextCNNEmbedding
 
 """
+VALIDATION/TEST
+"""
+
+def loadAllData(fileName):
+    inputFile = open(fileName)
+
+    return inputFile.readlines()
+
+"""
+TRAINING
 CREATE A FEED OF RAW DATA (objects) IN BATCHES; EACH BATCH READY TO BE PROCESSED BY TENSORFLOW FOR TRAINING
 """
 
@@ -147,6 +157,11 @@ class Train(object):
 
         self.__flags = flags
 
+        # global iteration counter
+        self.__counter = 0
+        # best loss on validation
+        self.__bestLoss = 0
+
     def __enter__(self):
         tf.Graph().as_default().__enter__()
         tf.device('/cpu:0').__enter__()
@@ -155,18 +170,20 @@ class Train(object):
         tf.Graph().as_default().__exit__(*args)
         tf.device('/cpu:0').__exit__(*args)
 
-    def train(self, data, scores):
+    def train(self, data, scores, validationDataGenerator):
         """
         The actual training
 
         :param data: data
         :param scores: scores
+        :param validationDataGenerator: generator to validation data; it has to yield a pair (validationData,validationScores)
         """
 
-        # generate batches
+        # generate batches for training
         batches = self.batch_iter(data, scores, self.__flags.batch_size, self.__flags.num_epochs)
 
         for batch in batches:
+            # training
             feed_dict = {
                 self.__xExpression: batch[0],
                 self.__scoresExpression: batch[1]
@@ -178,10 +195,40 @@ class Train(object):
             print("{}: step {}, loss {:g}".format(time_str, step, loss))
             self.__train_summary_writer.add_summary(summaries, step)
 
-    def batch_iter(self,data, scores, batch_size, num_epochs):
+            # validation
+            self.__counter += 1
+            if self.__counter % self.__flags.evaluate_every == 0:
+                print("\nEvaluation:")
+
+                for validationDataBatch in validationDataGenerator:
+
+                    # generate batches for validation
+                    validationBatches = self.batch_iter(validationDataBatch[0], validationDataBatch[1], self.__flags.batch_size,
+                                                        self.__flags.num_epochs)
+
+                    for validationBatch in validationBatches:
+                        validation_feed_dict = {
+                            self.__xExpression: validationBatch[0],
+                            self.__scoresExpression: validationBatch[1]
+                        }
+                    step, summaries, loss, accuracy = self.__sess.run(
+                        [self.__global_step, self.__validation_summary_op, self.__lossExpression], validation_feed_dict)
+                time_str = datetime.datetime.now().isoformat()
+                print("{}: step {}, loss {:g}".format(time_str, step, loss))
+                print("")
+                self.__validation_summary_writer.add_summary(summaries, step)
+
+                # loss best, then create a checkpoint
+                if loss < self.__bestLoss - self.__flags.tolerance:
+                    current_step = tf.train.global_step(self.__sess, self.__global_step)
+                    path = self.__saver.save(self.__sess, self.__checkpoint_prefix, global_step=current_step)
+                    print("Lower validation error: saved model checkpoint to {}\n".format(path))
+
+    def batch_iter(self, data, scores, batch_size, num_epochs):
         """
         Generates a batch iterator; this is a generator function
 
+        :param data: tensor of data
         :param scores: numpy 1D array of scores
         :param batch_size: batch size in SGD
         :param num_epochs: number of epochs
@@ -267,19 +314,25 @@ class Train(object):
             out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp))
             print("Writing to {}\n".format(out_dir))
 
-            # Summaries for loss and accuracy
+            # summaries for loss and accuracy
             loss_summary = tf.scalar_summary("loss",self.__lossExpression)
 
-            # Train Summaries
+            # train Summaries
             self.__train_summary_op = tf.merge_summary([loss_summary, grad_summaries_merged])
             train_summary_dir = os.path.join(out_dir, "summaries", "train")
             self.__train_summary_writer = tf.train.SummaryWriter(train_summary_dir, self.__sess.graph)
 
+            # validation summaries
+            self.__validation_summary_op = tf.merge_summary([loss_summary, grad_summaries_merged])
+            validation_summary_dir = os.path.join(out_dir, "summaries", "validation")
+            self.__validation_summary_writer = tf.train.SummaryWriter(validation_summary_dir, self.__sess.graph)
+
             # checkpoint directory. Tensorflow assumes this directory already exists so we need to create it
-            checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
+            checkpoint_dir = os.path.abspath(os.path.join(out_dir, self.__flags.checkpoint_dir))
+            self.__checkpoint_prefix = os.path.join(checkpoint_dir, "model")
             if not os.path.exists(checkpoint_dir):
                 os.makedirs(checkpoint_dir)
-            tf.train.Saver(tf.all_variables())
+            self.__saver = tf.train.Saver(tf.all_variables())
 
             # initialize all variables
             self.__sess.run(tf.initialize_all_variables())
