@@ -1,40 +1,74 @@
 import tensorflow as tf
 import numpy as np
 
-def test(flags):
+class Evaluate(object):
 
-    print("\nEvaluating on test data...\n")
+    def __init__(self, flags):
+        """
+        :param flags: tf flags
+        """
+        self.__flags = flags
 
-    checkpoint_file = tf.train.latest_checkpoint(flags.checkpoint_dir)
-    graph = tf.Graph()
-    with graph.as_default():
-        session_conf = tf.ConfigProto(
-          allow_soft_placement=flags.allow_soft_placement,
-          log_device_placement=flags.log_device_placement)
-        sess = tf.Session(config=session_conf)
-        with sess.as_default():
-            # Load the saved meta graph and restore variables
-            saver = tf.train.import_meta_graph("{}.meta".format(checkpoint_file))
-            saver.restore(sess, checkpoint_file)
+    def batch_iter(self, data, scores, batch_size):
+        """
+        Generates a batch iterator; this is a generator function
 
-            # Get the placeholders from the graph by name
-            input_x = graph.get_operation_by_name("input_cnn_x").outputs[0]
+        :param data: tensor or data
+        :param scores: numpy 1D array of scores
+        :param batch_size: batch size
+        """
 
-            # Tensors we want to evaluate
-            predictions = graph.get_operation_by_name("output/predictions").outputs[0]
+        data_size = len(data)
+        num_batches = int(len(data)/batch_size) + 1
+        for batch_num in range(num_batches):
+            start_index = batch_num * batch_size
+            end_index = min((batch_num + 1) * batch_size, data_size)
+            yield (data[start_index:end_index],scores[start_index:end_index])
 
-            # Generate batches for one epoch
-            batches = data_helpers.batch_iter(list(x_test), flags.batch_size, 1, shuffle=False)
+    def evaluate(self, pairBatchesGenerator):
+        """
+        Evaluate test data which are provided by a generator
 
-            # Collect the predictions here
-            all_predictions = []
+        :param pairBatchesGenerator: generator that must return a pair of (data,score)
+        """
 
-            for x_test_batch in batches:
-                batch_predictions = sess.run(predictions, {input_x: x_test_batch, dropout_keep_prob: 1.0})
-                all_predictions = np.concatenate([all_predictions, batch_predictions])
+        print("\nEvaluating on test data...\n")
 
-    # Print accuracy if y_test is defined
-    if y_test is not None:
-        correct_predictions = float(sum(all_predictions == y_test))
-        print("Total number of test examples: {}".format(len(y_test)))
-        print("Accuracy: {:g}".format(correct_predictions/float(len(y_test))))
+        checkpoint_file = tf.train.latest_checkpoint(self.__flags.checkpoint_dir)
+        graph = tf.Graph()
+        errors = []
+        trueScores = []
+        with graph.as_default():
+            session_conf = tf.ConfigProto(
+              allow_soft_placement=self.__flags.allow_soft_placement,
+              log_device_placement=self.__flags.log_device_placement)
+            sess = tf.Session(config=session_conf)
+            with sess.as_default():
+                # Load the saved meta graph and restore variables
+                saver = tf.train.import_meta_graph("{}.meta".format(checkpoint_file))
+                saver.restore(sess, checkpoint_file)
+
+                # Get the placeholders from the graph by name
+                data = graph.get_operation_by_name("input_cnn_x").outputs[0]
+
+                # Tensors we want to evaluate
+                scores = graph.get_operation_by_name("output/scores").outputs[0]
+
+                # Collect the errors
+                for pairBatch in pairBatchesGenerator:
+                    batches = self.batch_iter(pairBatch[0],pairBatch[1],self.__flags.batch_size)
+                    for batch in batches:
+                        feed_dict = {
+                            data: batch[0]
+                        }
+                        batchScores = sess.run(scores, feed_dict)
+                        errors = np.concatenate([errors, batch[1]-batchScores])
+                        trueScores = np.concatenate([trueScores, batch[1]])
+
+            # print metrics
+            print("Total number of test examples: {}".format(len(errors)))
+            avgSSE = sum([x*x for x in errors])/float(len(errors))
+            print("Averate SSE: {:g}".format(avgSSE))
+            # when true score is 0, error is also zero since the two objects are identical
+            mape = sum([abs(x[0])/x[1] for x in zip(errors,trueScores) if x[1] > self.__flags.tolerance])/float(len(errors))
+            print("MAPE: {:g}".format(mape))
