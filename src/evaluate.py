@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import math
 
 class Evaluate(object):
 
@@ -19,7 +20,7 @@ class Evaluate(object):
         """
 
         data_size = len(data)
-        num_batches = int(len(data)/batch_size) + 1
+        num_batches = math.ceil(len(data)/batch_size)
         for batch_num in range(num_batches):
             start_index = batch_num * batch_size
             end_index = min((batch_num + 1) * batch_size, data_size)
@@ -35,6 +36,9 @@ class Evaluate(object):
         print("\nEvaluating on test data...\n")
 
         checkpoint_file = tf.train.latest_checkpoint(self.__flags.checkpoint_dir)
+        print(self.__flags.checkpoint_dir)
+        print(checkpoint_file)
+        print(x)
         graph = tf.Graph()
         errors = []
         trueScores = []

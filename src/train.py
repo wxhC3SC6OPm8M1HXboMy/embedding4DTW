@@ -4,6 +4,7 @@ import time
 import datetime
 import random
 import numpy as np
+import math
 
 from src.text_cnn_embedding import TextCNNEmbedding
 
@@ -105,7 +106,7 @@ class ProcessInMemoryBatch(object):
 
         return (data,scores)
 
-    def process(self,corpus,batch_size,max_pairs = None):
+    def process(self,corpus,batch_size,max_pairs = None,noPasses = -1):
         """
         Main generator function that processes one batch of objects loaded into memory
         All objects are divided into batches
@@ -114,11 +115,13 @@ class ProcessInMemoryBatch(object):
 
         :param corpus: list of objects
         :param batch_size: batch size from objects in corpus
+        :param max_pairs: the maximuum number of pairs to consider in looping
+        :param noPasses: number of passes through the data (-1 means infinity)
         :return pair of: 3D numpy tensor; dim 0 = instance, dim 1 = embedding, dim 2 = features AND 1D numpy tensor of scores
         """
-
+ 
         # craete all pairs and ranodomly permute them
-        num_batches_per_epoch = int(len(corpus) / batch_size) + 1
+        num_batches_per_epoch = math.ceil(len(corpus) / batch_size)
         allPairs = [(i,j) for i in range(num_batches_per_epoch) for j in range(i,num_batches_per_epoch)]
         random.shuffle(allPairs)
 
@@ -129,15 +132,20 @@ class ProcessInMemoryBatch(object):
             print("max_pairs in process exceeds the size of the list of all pairs of batches! Resetting to the length of the list!")
 
         n = len(corpus)
-
+ 
         # iterate forever
         count = 0 # index into allPairs
+        noPass = 0 # number of full passes through the data
         while True:
             t = allPairs[count]
             from1, to1 = (t[0] * batch_size, min((t[0]+1) * batch_size, n))
             from2, to2 = (t[1] * batch_size, min((t[1]+1) * batch_size, n))
             yield self.__createAllPairs(corpus[from1:to1], corpus[from2:to2])
+            if count+1 == max_pairs:
+                noPass += 1
             count = ((count+1) % max_pairs)
+            if noPass == noPasses:
+                break
 
 """
 MINI-BATCH SGD IN TENSORFLOW
@@ -160,7 +168,7 @@ class Train(object):
         # global iteration counter
         self.__counter = 0
         # best loss on validation
-        self.__bestLoss = 0
+        self.__bestLoss = float("inf")
 
     def __enter__(self):
         tf.Graph().as_default().__enter__()
@@ -198,31 +206,29 @@ class Train(object):
             # validation
             self.__counter += 1
             if self.__counter % self.__flags.evaluate_every == 0:
-                print("\nEvaluation:")
+                print("\nEvaluation on validation:", flush=True)
 
                 for validationDataBatch in validationDataGenerator:
-
                     # generate batches for validation
-                    validationBatches = self.batch_iter(validationDataBatch[0], validationDataBatch[1], self.__flags.batch_size,
-                                                        self.__flags.num_epochs)
-
+                    validationBatches = self.batch_iter(validationDataBatch[0], validationDataBatch[1], self.__flags.batch_size,1)
                     for validationBatch in validationBatches:
                         validation_feed_dict = {
                             self.__xExpression: validationBatch[0],
                             self.__scoresExpression: validationBatch[1]
                         }
-                    step, summaries, loss, accuracy = self.__sess.run(
-                        [self.__global_step, self.__validation_summary_op, self.__lossExpression], validation_feed_dict)
+                        summaries, loss = self.__sess.run(
+                            [self.__validation_summary_op, self.__lossExpression], validation_feed_dict)
                 time_str = datetime.datetime.now().isoformat()
-                print("{}: step {}, loss {:g}".format(time_str, step, loss))
-                print("")
+                print("{}: validation loss {:g}".format(time_str, loss))
+                print("",flush=True)
                 self.__validation_summary_writer.add_summary(summaries, step)
 
                 # loss best, then create a checkpoint
                 if loss < self.__bestLoss - self.__flags.tolerance:
                     current_step = tf.train.global_step(self.__sess, self.__global_step)
                     path = self.__saver.save(self.__sess, self.__checkpoint_prefix, global_step=current_step)
-                    print("Lower validation error: saved model checkpoint to {}\n".format(path))
+                    self.__bestLoss = loss
+                    print("Lower validation error: saved model checkpoint to {}\n".format(path),flush=True)
 
     def batch_iter(self, data, scores, batch_size, num_epochs):
         """
@@ -235,7 +241,7 @@ class Train(object):
         """
 
         data_size = len(data)
-        num_batches_per_epoch = int(len(data)/batch_size) + 1
+        num_batches_per_epoch = math.ceil(len(data)/batch_size)
         for epoch in range(num_epochs):
             for batch_num in range(num_batches_per_epoch):
                 start_index = batch_num * batch_size

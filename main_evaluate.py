@@ -47,7 +47,7 @@ def main_evaluate():
     processOneBatch = train.ProcessInMemoryBatch(sentence2Matrix.createMatrix, distanceObj.computeDistance,
                                                  flags.embedding_dim, flags.no_inner_unit * flags.no_outer_unit)
 
-    pairBatches = processOneBatch.process(validationData, flags.test_batch_size)
+    pairBatches = processOneBatch.process(validationData, flags.test_batch_size,noPasses=1)
 
     # evaluate on test data
     evaluateObj = evaluate.Evaluate(flags)

@@ -60,6 +60,10 @@ def main_train():
     # class for computing the distance between two sentences
     distanceObj = dataprep.ComputeDistance(flags.distance_type,flags.word2vec_folder)
 
+    # data validation processing class
+    processOneValidationBatch = train.ProcessInMemoryBatch(sentence2Matrix.createMatrix,distanceObj.computeDistance,
+                                                           flags.embedding_dim,flags.no_inner_unit * flags.no_outer_unit)    
+
     # the training object
     training = train.Train(flags.no_inner_unit, flags.no_outer_unit, flags)
     with training:
@@ -79,7 +83,8 @@ def main_train():
                 print("Processing pair batch number %d" % (j+1))
                 (data,scores) = next(pairBatch)
                 # validation generator
-                validationDataGenerator = train.process(validationData,flags.validation_batch_size)
+                validationDataGenerator = processOneValidationBatch.process(validationData,flags.validation_batch_size,noPasses=1)
+
                 # actual training
                 training.train(data, scores, validationDataGenerator)
 
