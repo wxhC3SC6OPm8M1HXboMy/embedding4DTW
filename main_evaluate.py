@@ -1,4 +1,5 @@
 import pickle
+import os
 
 import src.parameters as params
 import src.train as train
@@ -22,14 +23,33 @@ test data is loaded at once (as one batch) and prepared in batches (due to poten
 
 CHARACTER_FILE = "data/chars.pkl"
 
+# if empty, then the most recent one is taken; if non-empty, then the relative path based on curdir is taken
+params.tf.flags.DEFINE_string("checkpoint_abs_dir", "", "Checkpoint non-default directory")
+
 """
 EVALUATE
 """
+
+def checkpointDir(flags):
+    setDir = flags.checkpoint_abs_dir
+    if setDir == "":
+        # fetch the most recent directory in runs
+        dirName = os.path.abspath(os.path.join(os.path.curdir, "runs"))
+        dirs = [os.path.join(dirName,d) for d in os.listdir(dirName)]
+        lastDir = max([d for d in dirs if os.path.isdir(d)], key = os.path.getmtime)
+        setDir = os.path.abspath(os.path.join(lastDir, flags.checkpoint_dir))
+    else:
+        setDir = os.path.abspath(os.path.join(os.path.curdir, setDir))
+
+    flags.checkpoint_dir = setDir
 
 def main_evaluate():
 
     # set all hyper parameters
     flags = params.setParameters()
+
+    # set the checkpoint directory
+    checkpointDir(flags)
 
     # read the mapping of characters to array indices
     character_dict = pickle.load( open( CHARACTER_FILE, "rb" ) )
