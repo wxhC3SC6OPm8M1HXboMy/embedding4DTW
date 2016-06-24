@@ -39,8 +39,8 @@ def checkpointDir(flags):
         lastDir = max([d for d in dirs if os.path.isdir(d)], key = os.path.getmtime)
         setDir = os.path.abspath(os.path.join(lastDir, flags.checkpoint_dir))
     else:
-        setDir = os.path.abspath(os.path.join(os.path.curdir, setDir))
-
+        setDir = os.path.abspath(os.path.join(os.path.curdir, setDir, flags.checkpoint_dir))
+    print(setDir)
     flags.checkpoint_dir = setDir
 
 def main_evaluate():

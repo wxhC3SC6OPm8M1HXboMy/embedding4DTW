@@ -33,12 +33,10 @@ class Evaluate(object):
         :param pairBatchesGenerator: generator that must return a pair of (data,score)
         """
 
-        print("\nEvaluating on test data...\n")
+        print("\nEvaluating on test data basedd on checkpoint directory %s...\n" % self.__flags.checkpoint_dir)
 
         checkpoint_file = tf.train.latest_checkpoint(self.__flags.checkpoint_dir)
-        print(self.__flags.checkpoint_dir)
-        print(checkpoint_file)
-        print(x)
+
         graph = tf.Graph()
         errors = []
         trueScores = []
@@ -56,7 +54,7 @@ class Evaluate(object):
                 data = graph.get_operation_by_name("input_cnn_x").outputs[0]
 
                 # Tensors we want to evaluate
-                scores = graph.get_operation_by_name("output/scores").outputs[0]
+                scores = graph.get_operation_by_name("predicted_distance").outputs[0]
 
                 # Collect the errors
                 for pairBatch in pairBatchesGenerator:
@@ -72,7 +70,7 @@ class Evaluate(object):
             # print metrics
             print("Total number of test examples: {}".format(len(errors)))
             avgSSE = sum([x*x for x in errors])/float(len(errors))
-            print("Averate SSE: {:g}".format(avgSSE))
+            print("Average SSE: {:g}".format(avgSSE))
             # when true score is 0, error is also zero since the two objects are identical
             mape = sum([abs(x[0])/x[1] for x in zip(errors,trueScores) if x[1] > self.__flags.tolerance])/float(len(errors))
             print("MAPE: {:g}".format(mape))

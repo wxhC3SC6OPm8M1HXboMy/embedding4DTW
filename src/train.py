@@ -81,6 +81,33 @@ class ProcessInMemoryBatch(object):
         self.__embedding_dim = embedding_dim
         self.__feature_dim = feature_dim
 
+    def __createAllPairsSameBatch(self,batch1):
+        """
+        Scan all pairs and crate an input matrix of pairs
+        :param batch1: first batch
+        :return: pair of: 3D numpy tensor; dim 0 = instance, dim 1 = embedding, dim 2 = features AND 1D numpy tensor of scores
+        """
+
+        n = len(batch1)
+
+        scores = np.zeros(n*(n-1)/2,dtype=np.float32)
+        data = np.zeros((n*(n-1)/2,self.__embedding_dim, 2 * self.__feature_dim),dtype=np.float32)
+        count = 0
+        for i1,obj1 in enumerate(batch1):
+            for i2 in range(i1+1,n):
+                obj2 = batch1[i2]
+                # first create the data matrix
+                m1 = self.__object2MatrixFunction(obj1)
+                m2 = self.__object2MatrixFunction(obj2)
+                data[count, :self.__embedding_dim, :self.__feature_dim] = m1
+                data[count, :self.__embedding_dim, self.__feature_dim:2 * self.__feature_dim] = m2
+                # compute the distance
+                dist = self.__distanceBetween2Objects(obj1,obj2)
+                scores[count] = dist
+                count += 1
+
+        return (data,scores)
+
     def __createAllPairs(self,batch1,batch2):
         """
         Scan all pairs and crate an input matrix of pairs
@@ -140,7 +167,10 @@ class ProcessInMemoryBatch(object):
             t = allPairs[count]
             from1, to1 = (t[0] * batch_size, min((t[0]+1) * batch_size, n))
             from2, to2 = (t[1] * batch_size, min((t[1]+1) * batch_size, n))
-            yield self.__createAllPairs(corpus[from1:to1], corpus[from2:to2])
+            if t[0] != t[1]:
+                yield self.__createAllPairs(corpus[from1:to1], corpus[from2:to2])
+            else:
+                yield self.__createAllPairsSameBatch(corpus[from1:to1])
             if count+1 == max_pairs:
                 noPass += 1
             count = ((count+1) % max_pairs)
@@ -165,6 +195,10 @@ class Train(object):
 
         self.__flags = flags
 
+        # running average
+        self.__avgLoss = 0
+        # sample count
+        self.__sampleCount = 0
         # global iteration counter
         self.__counter = 0
         # best loss on validation
@@ -199,14 +233,19 @@ class Train(object):
             _, step, summaries, loss = self.__sess.run([self.__train_op, self.__global_step, self.__train_summary_op,
                                                         self.__lossExpression], feed_dict)
 
+            self.__avgLoss = (self.__avgLoss*self.__sampleCount + loss)/(self.__sampleCount + len(batch[0])) 
+
             time_str = datetime.datetime.now().isoformat()
-            print("{}: step {}, loss {:g}".format(time_str, step, loss))
+            print("{}: step {}, batch loss {:g}, avg loss {:g}".format(time_str, step, loss, self.__avgLoss))
             self.__train_summary_writer.add_summary(summaries, step)
 
             # validation
             self.__counter += 1
             if self.__counter % self.__flags.evaluate_every == 0:
                 print("\nEvaluation on validation:", flush=True)
+
+                runningSSE = 0
+                countValidation = 0
 
                 for validationDataBatch in validationDataGenerator:
                     # generate batches for validation
@@ -218,16 +257,20 @@ class Train(object):
                         }
                         summaries, loss = self.__sess.run(
                             [self.__validation_summary_op, self.__lossExpression], validation_feed_dict)
+                        runningSSE += loss
+                        countValidation += len(validationBatch[0])
+
                 time_str = datetime.datetime.now().isoformat()
-                print("{}: validation loss {:g}".format(time_str, loss))
+                avgLoss = runningSSE/countValidation
+                print("{}: validation loss {:g}, validation average loss {:g}".format(time_str, runningSSE, avgLoss))
                 print("",flush=True)
                 self.__validation_summary_writer.add_summary(summaries, step)
 
                 # loss best, then create a checkpoint
-                if loss < self.__bestLoss - self.__flags.tolerance:
+                if avgLoss < self.__bestLoss - self.__flags.tolerance:
                     current_step = tf.train.global_step(self.__sess, self.__global_step)
                     path = self.__saver.save(self.__sess, self.__checkpoint_prefix, global_step=current_step)
-                    self.__bestLoss = loss
+                    self.__bestLoss = avgLoss
                     print("Lower validation error: saved model checkpoint to {}\n".format(path),flush=True)
 
     def batch_iter(self, data, scores, batch_size, num_epochs):
@@ -295,7 +338,7 @@ class Train(object):
             # create the loss function
             # norm of the difference
             differenceOfEmbeddings = tf.sub(cnnHighLevel.output[:,:,0],cnnHighLevel.output[:,:,1])
-            outputNorm = tf.reduce_sum(tf.pow(differenceOfEmbeddings, 2), 1)
+            outputNorm = tf.reduce_sum(tf.pow(differenceOfEmbeddings, 2), 1,name="predicted_distance")
             # sse loss
             self.__lossExpression = tf.reduce_sum(tf.pow(outputNorm-self.__scoresExpression, 2))
 
