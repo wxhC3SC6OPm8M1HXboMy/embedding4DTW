@@ -63,6 +63,7 @@ def main_train():
     # data validation processing class
     processOneValidationBatch = train.ProcessInMemoryBatch(sentence2Matrix.createMatrix,distanceObj.computeDistance,
                                                            flags.embedding_dim,flags.no_inner_unit * flags.no_outer_unit)    
+    processOneValidationBatch.corpus = validationData
 
     # the training object
     training = train.Train(flags.no_inner_unit, flags.no_outer_unit, flags)
@@ -76,17 +77,16 @@ def main_train():
             # for each in memory batch, slice into smaller batches and then create pairs of objects for training
             processOneBatch = train.ProcessInMemoryBatch(sentence2Matrix.createMatrix,distanceObj.computeDistance,
                                                          flags.embedding_dim,flags.no_inner_unit * flags.no_outer_unit)
-            pairBatch = processOneBatch.process(next(batch),flags.batch_size_per_memory_batch,flags.max_pairs_of_batches_per_memory_epoch)
+            processOneBatch.corpus = next(batch)
+            pairBatch = processOneBatch.process(flags.batch_size_per_memory_batch,flags.max_pairs_of_batches_per_memory_epoch)
             # execute epochs
             for j in range(flags.no_in_memory_pair_batches_to_process_per_memory_epoch):
                 # execute a single pair of batches
                 print("Processing pair batch number %d" % (j+1))
                 (data,scores) = next(pairBatch)
-                # validation generator
-                validationDataGenerator = processOneValidationBatch.process(validationData,flags.validation_batch_size,noPasses=1)
 
                 # actual training
-                training.train(data, scores, validationDataGenerator)
+                training.train(data, scores, processOneValidationBatch)
 
 main_train()
 

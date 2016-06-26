@@ -46,7 +46,7 @@ def setParameters():
     Validation and test parameters
     """
     tf.flags.DEFINE_string("checkpoint_dir", "checkpoints", "Checkpoint directory")
-    tf.flags.DEFINE_integer("evaluate_every", 100, "Evaluate model on dev set after this many steps (default: 100)")
+    tf.flags.DEFINE_integer("evaluate_every", 1000, "Evaluate model on dev set after this many steps (default: 1000)")
     tf.flags.DEFINE_integer("validation_batch_size", 100, "Batch size for creating pairs of objects for validation")
     tf.flags.DEFINE_integer("test_batch_size", 100, "Batch size for creating pairs of objects for evaluation")
 
