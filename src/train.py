@@ -348,7 +348,7 @@ class Train(object):
 
             # define training procedure
             self.__global_step = tf.Variable(0, name="global_step", trainable=False)
-            optimizer = tf.train.AdamOptimizer(1e-3)
+            optimizer = tf.train.AdagradOptimizer(1e-3)
             grads_and_vars = optimizer.compute_gradients(self.__lossExpression)
             self.__train_op = optimizer.apply_gradients(grads_and_vars, global_step=self.__global_step)
 
