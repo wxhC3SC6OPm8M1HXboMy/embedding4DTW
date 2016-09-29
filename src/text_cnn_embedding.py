@@ -67,5 +67,5 @@ class TextCNNEmbedding(object):
         result = tf.concat(2,temp1)
         result = tf.transpose(result,perm=[0,1,3,2])
 
-        self.output = tf.squeeze(result)
+        self.output = tf.squeeze(result,name="embedding")
 
