@@ -43,12 +43,14 @@ def setParameters():
     tf.flags.DEFINE_integer("num_epochs", 200, "Number of training epochs (default: 200)")
 
     """
-    Validation and test parameters
+    Validation, test, embed parameters
     """
     tf.flags.DEFINE_string("checkpoint_dir", "checkpoints", "Checkpoint directory")
     tf.flags.DEFINE_integer("evaluate_every", 1000, "Evaluate model on dev set after this many steps (default: 1000)")
     tf.flags.DEFINE_integer("validation_batch_size", 100, "Batch size for creating pairs of objects for validation")
     tf.flags.DEFINE_integer("test_batch_size", 100, "Batch size for creating pairs of objects for evaluation")
+    tf.flags.DEFINE_integer("test_batch_size", 100, "Batch size for creating pairs of objects for evaluation")
+    tf.flags.DEFINE_integer("embed_batch_size", 100000, "Batch size for objects to embed to load in memory")
 
     """
     Misc parameters
