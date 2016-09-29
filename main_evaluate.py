@@ -39,8 +39,8 @@ def checkpointDir(flags):
         lastDir = max([d for d in dirs if os.path.isdir(d)], key = os.path.getmtime)
         setDir = os.path.abspath(os.path.join(lastDir, flags.checkpoint_dir))
     else:
-        setDir = os.path.abspath(os.path.join(os.path.curdir, setDir))
-
+        setDir = os.path.abspath(os.path.join(os.path.curdir, setDir, flags.checkpoint_dir))
+    print(setDir)
     flags.checkpoint_dir = setDir
 
 def main_evaluate():
@@ -66,8 +66,8 @@ def main_evaluate():
     # iterate through all batches
     processOneBatch = train.ProcessInMemoryBatch(sentence2Matrix.createMatrix, distanceObj.computeDistance,
                                                  flags.embedding_dim, flags.no_inner_unit * flags.no_outer_unit)
-
-    pairBatches = processOneBatch.process(validationData, flags.test_batch_size,noPasses=1)
+    processOneBatch.corpus = validationData
+    pairBatches = processOneBatch.process(flags.test_batch_size,noPasses=1)
 
     # evaluate on test data
     evaluateObj = evaluate.Evaluate(flags)
