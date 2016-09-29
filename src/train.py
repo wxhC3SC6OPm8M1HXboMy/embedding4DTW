@@ -9,7 +9,7 @@ import math
 from src.text_cnn_embedding import TextCNNEmbedding
 
 """
-VALIDATION/TEST
+VALIDATION
 """
 
 def loadAllData(fileName):
