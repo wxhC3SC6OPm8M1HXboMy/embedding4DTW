@@ -28,25 +28,25 @@ load batches from file to memory as list
 
 def loadInMemoryOneBatch(fileName,batchSize):
     """
-    generator function that reads a batch of sentences from a file
-    :param fileName: input file name of sentences
+    generator function that reads a batch of objects from a file
+    :param fileName: input file name of objects
     :param batchSize: the size of each batch
-    :return: list of sentences in the batch
+    :return: list of objects in the batch
     """
 
     inputFile = open(fileName)
 
     while True:
-        sentences = []
+        objects = []
         while True:
             line = inputFile.readline()
             if line:
-                sentences.append(line)
-                if len(sentences) == batchSize:
+                objects.append(line)
+                if len(objects) == batchSize:
                     break
             else:
                 inputFile.seek(0)
-        yield sentences
+        yield objects
 
 """
 processes one in-memory batch

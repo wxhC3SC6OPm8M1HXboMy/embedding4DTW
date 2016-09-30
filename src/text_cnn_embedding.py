@@ -33,7 +33,6 @@ class TextCNNEmbedding(object):
                     b = tf.Variable(tf.constant(0.1, shape=[num_filters]), name="b")
 
                 # for each cnn input batch
-                temp_output = []
                 for batch in range(no_cnn_batches):
                     portionOfInput = input_expanded[:,:,batch*cnn_length:(batch+1)*cnn_length,:]
 

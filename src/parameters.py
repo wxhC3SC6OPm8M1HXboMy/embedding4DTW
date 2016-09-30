@@ -16,6 +16,7 @@ def setParameters():
     tf.flags.DEFINE_string("validate_text_file", "data/validate_sentences.txt", "Validate input file name")
     tf.flags.DEFINE_string("test_text_file", "data/test_sentences.txt", "Test input file name")
     tf.flags.DEFINE_string("embed_text_file", "data/embed_sentendes.txt", "Embedding input file name")
+    tf.flags.DEFINE_string("embeddings_file", "data/embeddings.txt", "Embeddings output file name")
     # the number of objects to load to memory at once
     tf.flags.DEFINE_integer("batch_size_to_load_to_memory", 50000, "Number of text objects to load to memory")
     # the number of times we load objects to memory

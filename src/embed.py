@@ -1,0 +1,132 @@
+import numpy as np
+import math
+import os
+
+import tensorflow as tf
+
+"""
+EMBEDDINGS
+"""
+
+def loadInMemoryOneBatch(fileName,batchSize):
+    """
+    generator function that reads a batch of objects from a file; just one pass on the entire file
+    :param fileName: input file name of objects
+    :param batchSize: the size of each batch
+    :return: list of objects in the batch
+    """
+
+    inputFile = open(fileName)
+
+    while True:
+        objects = []
+        allDone = False
+        while True:
+            line = inputFile.readline()
+            if line:
+                objects.append(line)
+                if len(objects) == batchSize:
+                    break
+            else:
+                allDone = True
+                break
+        yield objects
+        if allDone == True:
+            break
+
+def createFeatureMatrix(batch,flags,object2Matrix):
+    """
+    Given a batch of objects, create the feature matrix by replicating each object and score of 0 (the score can be anything)
+    :param batch: input data batch
+    :param flags: parameters
+    :param object2Matrix: python object to construct a matrix from an input object
+    :return:
+    """
+    feature_dim = flags.no_inner_unit * flags.no_outer_unit
+    data = np.zeros((len(batch) * len(batch), flags.embedding_dim, 2 * feature_dim), dtype=np.float32)
+    count = 0
+    for obj in batch:
+        m1 = object2Matrix.createMatrix.object2MatrixFunction(obj)
+        m2 = object2Matrix.createMatrix.object2MatrixFunction(obj)
+        data[count, :flags.embedding_dim, :feature_dim] = m1
+        data[count, :flags.embedding_dim, feature_dim:2 * feature_dim] = m2
+        count += 1
+    scores = np.zeros(len(batch) * len(batch), dtype=np.float32)
+
+    return (data,scores)
+
+"""
+calcuate inference and fetch the actual embedding
+"""
+
+class Embedding(object):
+
+    def __init__(self, flags):
+        """
+        :param flags: tf flags
+        """
+        self.__flags = flags
+
+    def batch_iter(self, data, scores, batch_size):
+        """
+        Generates a batch iterator; this is a generator function
+
+        :param data: tensor or data
+        :param scores: numpy 1D array of scores
+        :param batch_size: batch size
+        """
+
+        data_size = len(data)
+        num_batches = math.ceil(len(data)/batch_size)
+        for batch_num in range(num_batches):
+            start_index = batch_num * batch_size
+            end_index = min((batch_num + 1) * batch_size, data_size)
+            yield (data[start_index:end_index],scores[start_index:end_index])
+
+    def evaluate(self, pairBatchesGenerator):
+        """
+        Evaluate data which are provided by a generator
+
+        :param pairBatchesGenerator: generator that must return a pair of (data,score); scores can be anything
+        """
+
+        print("\nEvaluating on test data...\n")
+
+        checkpoint_file = tf.train.latest_checkpoint(self.__flags.checkpoint_dir)
+        print(self.__flags.checkpoint_dir)
+
+        graph = tf.Graph()
+        with graph.as_default():
+            session_conf = tf.ConfigProto(
+              allow_soft_placement=self.__flags.allow_soft_placement,
+              log_device_placement=self.__flags.log_device_placement)
+            sess = tf.Session(config=session_conf)
+            with sess.as_default():
+                # Load the saved meta graph and restore variables
+                saver = tf.train.import_meta_graph("{}.meta".format(checkpoint_file))
+                saver.restore(sess, checkpoint_file)
+
+                # Get the placeholders from the graph by name
+                data = graph.get_operation_by_name("input_cnn_x").outputs[0]
+
+                # Tensors we want to evaluate: embedding
+                embeddings = graph.get_operation_by_name("embedding").outputs[0]
+
+                outputFile = open(self.__flags.embeddings_file,"a+")
+
+                # Collect embeddings
+                for pairBatch in pairBatchesGenerator:
+                    allEmbeddings = []
+                    batches = self.batch_iter(pairBatch[0],pairBatch[1],self.__flags.batch_size)
+                    for batch in batches:
+                        feed_dict = {
+                            data: batch[0]
+                        }
+                        batchEmbeddings = sess.run(embeddings, feed_dict)
+                        allEmbeddings.append(batchEmbeddings)
+                    # write the embeddings to file
+                    for e in allEmbeddings:
+                        np.save(outputFile,e)
+
+
+
