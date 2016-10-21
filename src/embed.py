@@ -34,26 +34,42 @@ def loadInMemoryOneBatch(fileName,batchSize):
         if allDone == True:
             break
 
-def createFeatureMatrix(batch,flags,object2Matrix):
-    """
-    Given a batch of objects, create the feature matrix by replicating each object and score of 0 (the score can be anything)
-    :param batch: input data batch
-    :param flags: parameters
-    :param object2Matrix: python object to construct a matrix from an input object
-    :return:
-    """
-    feature_dim = flags.no_inner_unit * flags.no_outer_unit
-    data = np.zeros((len(batch) * len(batch), flags.embedding_dim, 2 * feature_dim), dtype=np.float32)
-    count = 0
-    for obj in batch:
-        m1 = object2Matrix.createMatrix.object2MatrixFunction(obj)
-        m2 = object2Matrix.createMatrix.object2MatrixFunction(obj)
-        data[count, :flags.embedding_dim, :feature_dim] = m1
-        data[count, :flags.embedding_dim, feature_dim:2 * feature_dim] = m2
-        count += 1
-    scores = np.zeros(len(batch) * len(batch), dtype=np.float32)
+"""
+from raw data create feature matrix (we create a copy also)
+"""
 
-    return (data,scores)
+class CreateFeatureMatrix(object):
+    def __init__(self,flags,object2Matrix):
+        """
+        :param flags: tf flags
+        :param object2Matrix: python object that converts an object to a single feature matrix
+        """
+        
+        self.__flags = flags
+        self.__object2Matrix = object2Matrix
+        
+    def createFeatureMatrix(self,batch):
+        """
+        Given a batch of objects, create the feature matrix by replicating each object and score of 0 (the score can be anything)
+        :param batch: input data batch
+        :param flags: parameters
+        :param object2Matrix: python object to construct a matrix from an input object
+        :return:
+        """
+     
+        feature_dim = self.__flags.no_inner_unit * self.__flags.no_outer_unit
+        data = np.zeros((len(batch), self.__flags.embedding_dim, 2 * feature_dim), dtype=np.float32)
+
+        count = 0
+        for obj in batch:
+            m1 = self.__object2Matrix(obj)
+            m2 = self.__object2Matrix(obj)
+            data[count, :self.__flags.embedding_dim, :feature_dim] = m1
+            data[count, :self.__flags.embedding_dim, feature_dim:2 * feature_dim] = m2
+            count += 1
+            scores = np.zeros(len(batch), dtype=np.float32)
+
+        return (data,scores)
 
 """
 calcuate inference and fetch the actual embedding
@@ -61,11 +77,13 @@ calcuate inference and fetch the actual embedding
 
 class Embedding(object):
 
-    def __init__(self, flags):
+    def __init__(self, flags, batch2FeatureMatrixFunc):
         """
         :param flags: tf flags
+        :param batch2matrixFunc: function that converts a batch to feature matrix
         """
         self.__flags = flags
+        self.__batch2FeatureMatrixFunc = batch2FeatureMatrixFunc
 
     def batch_iter(self, data, scores, batch_size):
         """
@@ -75,7 +93,7 @@ class Embedding(object):
         :param scores: numpy 1D array of scores
         :param batch_size: batch size
         """
-
+        
         data_size = len(data)
         num_batches = math.ceil(len(data)/batch_size)
         for batch_num in range(num_batches):
@@ -83,14 +101,14 @@ class Embedding(object):
             end_index = min((batch_num + 1) * batch_size, data_size)
             yield (data[start_index:end_index],scores[start_index:end_index])
 
-    def evaluate(self, pairBatchesGenerator):
+    def evaluate(self, dataBatches):
         """
         Evaluate data which are provided by a generator
 
         :param pairBatchesGenerator: generator that must return a pair of (data,score); scores can be anything
         """
 
-        print("\nEvaluating on test data...\n")
+        print("\nInference! Creating embeddings...\n")
 
         checkpoint_file = tf.train.latest_checkpoint(self.__flags.checkpoint_dir)
         print(self.__flags.checkpoint_dir)
@@ -112,21 +130,23 @@ class Embedding(object):
                 # Tensors we want to evaluate: embedding
                 embeddings = graph.get_operation_by_name("embedding").outputs[0]
 
-                outputFile = open(self.__flags.embeddings_file,"a+")
-
                 # Collect embeddings
-                for pairBatch in pairBatchesGenerator:
-                    allEmbeddings = []
-                    batches = self.batch_iter(pairBatch[0],pairBatch[1],self.__flags.batch_size)
+                allEmbeddings = []
+                
+                # for all raw data batches
+                for dataBatch in dataBatches:
+                    dataPair = self.__batch2FeatureMatrixFunc(dataBatch)
+
+                    batches = self.batch_iter(dataPair[0],dataPair[1],self.__flags.batch_size)
                     for batch in batches:
                         feed_dict = {
                             data: batch[0]
                         }
                         batchEmbeddings = sess.run(embeddings, feed_dict)
-                        allEmbeddings.append(batchEmbeddings)
-                    # write the embeddings to file
-                    for e in allEmbeddings:
-                        np.save(outputFile,e)
+                        allEmbeddings.append(batchEmbeddings[:,:,0]) # there are two identical copies, we get the first one
+                # write the embeddings to file
+                for e in allEmbeddings:
+                    np.save(self.__flags.embeddings_file,e)
 
-
+                print("done!\n")
 

@@ -5,7 +5,6 @@ import src.parameters as params
 import src.embed as embed
 
 import tools.prep_data as dataprep
-import src.evaluate as evaluate
 
 """
 lowLevel
@@ -58,15 +57,12 @@ def main_embed():
     # read embedding data; generator
     batches = embed.loadInMemoryOneBatch(flags.embed_text_file, flags.embed_batch_size)
 
-    # class for creating the matrix from sentences
+    # classes for creating the matrix from sentences
     sentence2Matrix = dataprep.CreateMatrixFromSentence(character_dict,flags.no_inner_unit,flags.no_outer_unit)
+    data2Matrix = embed.CreateFeatureMatrix(flags, sentence2Matrix.createMatrix)
 
-    for batch in batches:
-        # create data; pair of (data,scores): scores are zero; data consists of pairs of idential sentences
-        data = embed.createFeatureMatrix(batch, flags, sentence2Matrix)
-
-        # evaluate on data to be embedded
-        evaluateObj = evaluate.Evaluate(flags)
-        evaluateObj.evaluate(data)
+    # peform the actual embeddings
+    embedObj = embed.Embedding(flags,data2Matrix.createFeatureMatrix)
+    embedObj.evaluate(batches)
 
 main_embed()

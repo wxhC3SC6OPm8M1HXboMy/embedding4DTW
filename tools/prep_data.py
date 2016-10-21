@@ -61,7 +61,7 @@ class CreateMatrixFromSentence(object):
             else:
                 block_ch = ["\t"] * int(space / 2) + ch + ["\t"] * int((space / 2) + 1)
             for j,char in enumerate(block_ch):
-                mat[self.__character_dict[char],i*self.__c+j+j] = 1
+                mat[self.__character_dict[char],i*self.__c+j] = 1
 
         return mat
 
