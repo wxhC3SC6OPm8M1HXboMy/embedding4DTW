@@ -208,11 +208,11 @@ class Train(object):
 
     def __enter__(self):
         tf.Graph().as_default().__enter__()
-        tf.device('/cpu:0').__enter__()
+        tf.device(self.__flags.gpu).__enter__()
 
     def __exit__(self,*args):
         tf.Graph().as_default().__exit__(*args)
-        tf.device('/cpu:0').__exit__(*args)
+        tf.device(self.__flags.gpu).__exit__(*args)
 
     def train(self, data, scores, validationDataObject):
         """
@@ -306,9 +306,8 @@ class Train(object):
         """
 
         tf.Graph().as_default()
-        tf.device('/cpu:0')
+        tf.device(self.__flags.gpu)
 
-        # with tf.Graph().as_default(),tf.device('/cpu:0'):
         session_conf = tf.ConfigProto(
           allow_soft_placement=self.__flags.allow_soft_placement,
           log_device_placement=self.__flags.log_device_placement)
