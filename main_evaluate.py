@@ -48,6 +48,9 @@ def main_evaluate():
     # set all hyper parameters
     flags = params.setParameters()
 
+    # set available gpus
+    os.environ['CUDA_VISIBLE_DEVICES'] = flags.gpus
+
     # set the checkpoint directory
     checkpointDir(flags)
 

@@ -59,7 +59,8 @@ def setParameters():
     tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
     tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
     tf.flags.DEFINE_integer("seed", 38761453, "Seed for random generator")
-    tf.flags.DEFINE_string("gpu", "/gpu:2", "Gpu used")
+    tf.flags.DEFINE.string("gpus", "0,1,2", "The set of available gpus")
+    tf.flags.DEFINE_string("gpu", "/gpu:2", "Gpu used") # the index of the gpu used from the list specified under gpus
     tf.flags.DEFINE_float("tolerance", 0.0000001, "Floating point tolerance")
 
     FLAGS = tf.flags.FLAGS

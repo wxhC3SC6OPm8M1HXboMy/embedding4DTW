@@ -1,5 +1,6 @@
 import pickle
 import random
+import os
 
 import src.parameters as params
 import src.train as train
@@ -45,6 +46,9 @@ def main_train():
 
     # set all hyper parameters
     flags = params.setParameters()
+
+    # set available gpus
+    os.environ['CUDA_VISIBLE_DEVICES'] = flags.gpus
 
     random.seed(flags.seed)
 
